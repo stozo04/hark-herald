@@ -1,2 +1,31 @@
-# hark-herald
-Hark! The Herald — an independent tracker for Hark's 12 features in ~60 days promise.
+# Hark! the Herald
+
+An independent tracker for Brett Adcock's promise of [12 major Hark features over the next ~60 days](https://x.com/adcock_brett), October 10 to December 8, 2026.
+
+[Visit the app](https://hark-herald.vercel.app/) · [Contribute](CONTRIBUTING.md) · [Report an issue](https://github.com/stozo04/hark-herald/issues)
+
+## What it tracks
+
+- **The twelve seals.** Each major feature stamps the next wax seal, in the order it ships. Extras are bonus; anything after December 8 is late.
+- **Pace.** Twelve in sixty days is one every five days. The hero says whether Hark is ahead, on pace or behind, and when the next one is due.
+- **Sixty days.** A calendar of the whole window, with a bell on every fifth day.
+- **Receipts.** Every feature and every user count links its original X post.
+
+## Development
+
+Plain HTML, CSS and JavaScript with one Node serverless function. No runtime dependencies. Node 22 or newer.
+
+```sh
+git clone https://github.com/stozo04/hark-herald.git
+cd hark-herald
+npm test
+npm run build
+```
+
+The build writes static assets to `dist/`; Vercel serves `api/tracker.js` alongside them. To run your own copy, create a Supabase project, run `db/schema.sql`, and set `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` (see `.env.example`). If storage is unavailable the API returns 503 and the page says so instead of showing old data.
+
+Agents: start with [AGENTS.md](AGENTS.md). Outside agents can read the public feed described in [llms.txt](llms.txt).
+
+## License
+
+[MIT](LICENSE). Independent fan project, not affiliated with Hark or Figure. Sibling of [Ship Happens](https://github.com/stozo04/ship-happens).
