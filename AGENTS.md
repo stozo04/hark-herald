@@ -17,6 +17,7 @@ The live site does **not** read data from this repo. `api/tracker.js` reads thre
 - No fallback data. Missing env vars or a storage failure means HTTP 503 and the page says live data is unavailable.
 - Vercel previews read the same production tables, so a data-only change needs no PR.
 - Writes are live for everyone immediately. Confirm data changes with Steven before writing.
+- A separate bot of Steven's (the same one that keeps Ship Happens current) checks Brett's and Hark's X posts hourly and writes `hark_*` rows on its own for clear cases. It never changes code or UI. Each run stamps `sync_checked_at` in `hark_settings.content`; if that is stale, the bot isn't running, so add features by hand. Keep its instructions and this file consistent.
 
 ### Schema rules the database enforces
 
