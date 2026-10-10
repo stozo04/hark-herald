@@ -4,7 +4,7 @@ Read this before changing Hark Road Trip. Owner and only approver: Steven ([@sto
 
 ## What this is
 
-An independent tracker for Brett Adcock's promise (posted October 10, 2026, after Hark launched on Tuesday October 6) of **12 major features over the next ~60 days**. The window is fixed at **October 10 to December 8, 2026** (day 1 to day 60). Sibling of [Ship Happens](https://github.com/stozo04/ship-happens), same stack and conventions.
+An independent tracker for Brett Adcock's promise ([posted October 10, 2026](https://x.com/adcock_brett/status/2108944733297066312), after Hark launched on Tuesday October 6) of **12 major features over the next ~60 days**. The window is fixed at **October 10 to December 8, 2026** (day 1 to day 60). Sibling of [Ship Happens](https://github.com/stozo04/ship-happens), same stack and conventions.
 
 - Live site: https://hark-herald.vercel.app/
 - Public JSON feed: `GET /api/tracker` (documented for outside agents in `llms.txt`)
@@ -64,8 +64,3 @@ Pace rule (`pace` in `lib/herald.mjs`): 12 in 60 days is one every five days. On
 - Before a PR: `npm test`, `npm run build`, and a look at the three widths.
 - Never commit credentials or personal data. `.env*` is ignored except `.env.example`.
 - Cloud sessions: check that you can push before doing the work. `gh pr create` may fail (GraphQL blocked); use `gh api repos/stozo04/hark-herald/pulls` instead.
-
-## Open questions for Steven
-
-- The promise post URL. `hark_settings.content.source_url` points at Brett's profile until we have it.
-- The first user count (562,000 on October 10) needs its post URL before it can go into `hark_users`.

@@ -1,6 +1,6 @@
 # Hark Road Trip
 
-An independent tracker for Brett Adcock's promise of [12 major Hark features over the next ~60 days](https://x.com/adcock_brett), October 10 to December 8, 2026.
+An independent tracker for Brett Adcock's promise of [12 major Hark features over the next ~60 days](https://x.com/adcock_brett/status/2108944733297066312), October 10 to December 8, 2026.
 
 [Visit the app](https://hark-herald.vercel.app/) · [Contribute](CONTRIBUTING.md) · [Report an issue](https://github.com/stozo04/hark-herald/issues)
 
