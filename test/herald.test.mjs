@@ -4,12 +4,12 @@ import { dayNumber, dateForDay, allDays, normalizeSourceUrl, seals, pace, userTa
 
 const f = (id, shipped_on) => ({ id, shipped_on, title: id, summary: '', category: 'Feature', source_url: 'https://x.com/a/status/1' });
 
-test('the window is Oct 10 to Dec 8, exactly 60 calendar days', () => {
-  assert.equal(dayNumber('2026-10-10'), 1);
-  assert.equal(dayNumber('2026-12-08'), 60);
-  assert.equal(dateForDay(60), '2026-12-08');
+test('the window is Oct 12 to Dec 10, exactly 60 calendar days', () => {
+  assert.equal(dayNumber('2026-10-12'), 1);
+  assert.equal(dayNumber('2026-12-10'), 60);
+  assert.equal(dateForDay(60), '2026-12-10');
   assert.equal(allDays().length, 60);
-  for (const v of ['2026-10-09', '2026-12-09', '2026-02-30', '2026-10-10T00:00:00Z', '', null]) assert.equal(dayNumber(v), null);
+  for (const v of ['2026-10-11', '2026-12-11', '2026-02-30', '2026-10-10T00:00:00Z', '', null]) assert.equal(dayNumber(v), null);
 });
 
 test('source URLs accept only real X post paths', () => {
@@ -17,9 +17,9 @@ test('source URLs accept only real X post paths', () => {
   for (const u of ['https://x.com.evil.test/a/status/1', 'http://x.com/a/status/1', 'javascript:alert(1)', 'https://x.com/a', 'https://x.com/a/status/1/photo/1']) assert.equal(normalizeSourceUrl(u), null);
 });
 
-test('seals fill in shipping order; extras are bonus, after Dec 8 is late', () => {
+test('seals fill in shipping order; extras are bonus, after Dec 10 is late', () => {
   const list = Array.from({ length: 13 }, (_, i) => f(`f-${i}`, dateForDay(i + 1)));
-  list.push(f('f-late', '2026-12-09'));
+  list.push(f('f-late', '2026-12-11'));
   const s = seals(list.reverse());
   assert.equal(s.slots[0].feature.id, 'f-0');
   assert.equal(s.slots[11].feature.id, 'f-11');
@@ -30,22 +30,32 @@ test('seals fill in shipping order; extras are bonus, after Dec 8 is late', () =
 
 test('pace is one feature every five days', () => {
   assert.equal(pace([], '2026-10-09').status, 'upcoming');
-  const d1 = pace([], '2026-10-10');
-  assert.equal(d1.status, 'on-pace'); assert.equal(d1.day, 1); assert.equal(d1.daysLeft, 59); assert.equal(d1.nextDue, '2026-10-14');
-  assert.equal(pace([], '2026-10-14').status, 'behind');
-  assert.equal(pace([f('a', '2026-10-12')], '2026-10-14').status, 'on-pace');
-  assert.equal(pace([f('a', '2026-10-10'), f('b', '2026-10-11'), f('c', '2026-10-11')], '2026-10-11').status, 'ahead');
-  assert.equal(pace([f('a', '2026-10-12')], '2026-10-14').nextDue, '2026-10-19');
-  // a feature dated after today is not counted yet
-  assert.equal(pace([f('a', '2026-10-20')], '2026-10-14').delivered, 0);
+  const sat = pace([], '2026-10-10');
+  assert.equal(sat.status, 'upcoming'); assert.equal(sat.nextDue, '2026-10-16');
+  const d1 = pace([], '2026-10-12');
+  assert.equal(d1.status, 'on-pace'); assert.equal(d1.day, 1); assert.equal(d1.daysLeft, 59); assert.equal(d1.nextDue, '2026-10-16');
+  assert.equal(pace([], '2026-10-16').status, 'behind');
+  assert.equal(pace([f('a', '2026-10-14')], '2026-10-16').status, 'on-pace');
+  assert.equal(pace([f('a', '2026-10-12'), f('b', '2026-10-13'), f('c', '2026-10-13')], '2026-10-13').status, 'ahead');
+  assert.equal(pace([f('a', '2026-10-14')], '2026-10-16').nextDue, '2026-10-21');
+  assert.equal(pace([f('a', '2026-10-20')], '2026-10-16').delivered, 0);
 });
 
-test('final verdict after Dec 8', () => {
+test('weekend features before day 1 still count as early stops', () => {
+  const early = [f('a', '2026-10-10'), f('b', '2026-10-11')];
+  assert.equal(pace(early, '2026-10-11').delivered, 2);
+  assert.equal(pace(early, '2026-10-11').nextDue, '2026-10-26');
+  assert.equal(pace(early, '2026-10-12').status, 'ahead');
+  assert.equal(seals(early).slots[0].feature.id, 'a');
+  assert.equal(pace([f('x', '2026-10-09')], '2026-10-12').delivered, 0);
+});
+
+test('final verdict after Dec 10', () => {
   const twelve = Array.from({ length: 12 }, (_, i) => f(`f-${i}`, dateForDay(i * 5 + 1)));
-  assert.equal(pace(twelve, '2026-12-09').status, 'kept');
-  assert.equal(pace(twelve.slice(0, 7), '2026-12-09').status, 'short');
+  assert.equal(pace(twelve, '2026-12-11').status, 'kept');
+  assert.equal(pace(twelve.slice(0, 7), '2026-12-11').status, 'short');
   assert.equal(pace(twelve.map((x, i) => ({ ...x, shipped_on: dateForDay(i * 2 + 1) })), '2026-11-10').status, 'kept');
-  assert.equal(pace([...twelve, f('x', '2026-12-01')], '2026-12-09').bonus, 1);
+  assert.equal(pace([...twelve, f('x', '2026-12-01')], '2026-12-11').bonus, 1);
 });
 
 test('user tally and compact numbers', () => {
@@ -63,5 +73,5 @@ test('route geometry spans the map and pace signs fall every five days', () => {
   const signs = paceSigns(3);
   assert.equal(signs.length, 12);
   assert.deepEqual(signs.slice(0, 4).map(s => [s.day, s.reached]), [[5, true], [10, true], [15, true], [20, false]]);
-  assert.equal(signs[11].date, '2026-12-08');
+  assert.equal(signs[11].date, '2026-12-10');
 });

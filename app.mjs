@@ -1,4 +1,4 @@
-import { START, TOTAL_DAYS, PROMISED, dayNumber, dateForDay, normalizeSourceUrl, seals, pace, userTally, compact, routeX, routeY, roadPath, paceSigns } from './lib/herald.mjs';
+import { PROMISE_DATE, START, END as END_DATE, TOTAL_DAYS, PROMISED, dayNumber, dateForDay, normalizeSourceUrl, seals, pace, routeX, routeY, roadPath, paceSigns } from './lib/herald.mjs';
 
 const $ = s => document.querySelector(s);
 let records, warning = '', toastTimer;
@@ -15,7 +15,7 @@ function sourceLink(url, text) {
 }
 
 const VERDICT = {
-  upcoming: ['Not started', 'The trip starts Oct 10.'],
+  upcoming: ['Not started', 'The 60-day clock starts Monday, Oct 12. Anything shipped this weekend counts as an early stop.'],
   'on-pace': ['On pace', 'Right on schedule: one stop every five days keeps the promise.'],
   ahead: ['Ahead', 'Driving faster than promised.'],
   behind: ['Behind', 'Falling behind one stop every five days.'],
@@ -28,19 +28,11 @@ function renderTrip(p) {
   const [pill, line] = VERDICT[p.status];
   $('#status-pill').textContent = pill;
   $('#status-pill').className = `pill ${p.status}`;
-  $('#verdict').textContent = (p.status === 'short' ? `${p.delivered} of 12 stops reached by Dec 8.` : line) + (p.bonus ? ` Plus ${plural(p.bonus, 'bonus stop')}.` : '');
-  $('#eyebrow').textContent = p.phase === 'live' ? `Day ${p.day} of 60 · Oct 10 → Dec 8` : p.phase === 'complete' ? 'Trip complete · Oct 10 → Dec 8' : 'Starts Oct 10 · Oct 10 → Dec 8';
+  $('#verdict').textContent = (p.status === 'short' ? `${p.delivered} of 12 stops reached by Dec 10.` : line) + (p.bonus ? ` Plus ${plural(p.bonus, 'bonus stop')}.` : '');
+  $('#eyebrow').textContent = p.phase === 'live' ? `Day ${p.day} of 60 · Oct 12 → Dec 10` : p.phase === 'complete' ? 'Trip complete · Oct 12 → Dec 10' : 'Day 1 is Mon, Oct 12 · Oct 12 → Dec 10';
   $('#days-left').textContent = p.phase === 'live' ? `${plural(p.daysLeft, 'day')} left` : p.phase === 'complete' ? 'The 60 days are up' : '60 days to go';
   $('#next-due').textContent = p.nextDue ? `Stop ${p.delivered + 1} due by ${fmt(p.nextDue)}` : '';
   $('#segments').innerHTML = Array.from({ length: PROMISED }, (_, i) => `<i class="${i < p.counted ? 'on' : ''}" style="--i:${i}"></i>`).join('');
-}
-
-function renderUsers() {
-  const t = userTally(records.users), chip = $('#users-chip');
-  if (!t) { chip.hidden = true; return; }
-  chip.hidden = false;
-  chip.href = normalizeSourceUrl(t.source_url) || '#';
-  chip.innerHTML = `<strong>${compact(t.users)}+</strong> users${t.points > 1 && t.growth > 0 ? ` <span class="up">▲ ${compact(t.growth)} since ${fmt(t.since)}</span>` : ` <span class="muted">as of ${fmt(t.as_of)}</span>`}`;
 }
 
 /** The road map. Seasons follow the calendar: October fall, November Thanksgiving, December winter. */
@@ -54,15 +46,15 @@ function renderRoute(p, today) {
     const top = s.y - 62, w = s.n > 9 ? 34 : 30;
     return `<g class="pace-sign${s.reached ? ' reached' : ''}"><title>Stop ${s.n} due by ${fmt(s.date)}</title><line x1="${s.x}" y1="${top + 26}" x2="${s.x}" y2="${s.y - 17}"/><rect x="${s.x - w / 2}" y="${top}" width="${w}" height="26" rx="4"/><text x="${s.x}" y="${top + 18}">${s.n}</text></g>`;
   }).join('');
-  const dots = records.features.filter(f => dayNumber(f.shipped_on) && f.shipped_on <= today).map(f => {
-    const x = routeX(dayNumber(f.shipped_on));
+  const dots = records.features.filter(f => f.shipped_on >= PROMISE_DATE && f.shipped_on <= END_DATE && f.shipped_on <= today).map(f => {
+    const x = routeX(dayNumber(f.shipped_on) || 1);
     return `<circle class="ship-dot" cx="${Math.round(x)}" cy="${Math.round(routeY(x))}" r="7"><title>${esc(f.title)} · ${fmt(f.shipped_on)}</title></circle>`;
   }).join('');
   const carDay = p.phase === 'upcoming' ? 1 : p.day;
   const cx = Math.round(routeX(carDay)), cy = Math.round(routeY(cx));
-  const carLabel = p.phase === 'complete' ? 'TRIP COMPLETE' : p.phase === 'upcoming' ? 'STARTS OCT 10' : `TODAY · DAY ${p.day}`;
+  const carLabel = p.phase === 'complete' ? 'TRIP COMPLETE' : p.phase === 'upcoming' ? 'STARTS OCT 12' : `TODAY · DAY ${p.day}`;
   const labelX = Math.min(1120, Math.max(80, cx));
-  $('#route').innerHTML = `<svg viewBox="0 0 1200 240" role="img" aria-label="Route map from Oct 10 to Dec 8 through fall, Thanksgiving and winter. ${p.counted} of 12 stops reached.${p.phase === 'live' ? ` Today is day ${p.day}.` : ''}">
+  $('#route').innerHTML = `<svg viewBox="0 0 1200 240" role="img" aria-label="Route map from Oct 12 to Dec 10 through fall, Thanksgiving and winter. ${p.counted} of 12 stops reached.${p.phase === 'live' ? ` Today is day ${p.day}.` : ''}">
     <rect class="z-fall" x="0" y="0" width="${novX}" height="240"/>
     <rect class="z-nov" x="${novX}" y="0" width="${decX - novX}" height="240"/>
     <rect class="z-dec" x="${decX}" y="0" width="${1200 - decX}" height="240"/>
@@ -77,12 +69,12 @@ function renderRoute(p, today) {
     ${signs}${dots}
     <g class="car" style="--x:${cx}px;--y:${cy}px"><rect class="cabin" x="-13" y="-29" width="24" height="11" rx="4"/><rect class="window" x="-9" y="-27" width="16" height="6" rx="2"/><rect class="body" x="-22" y="-20" width="44" height="14" rx="5"/><circle class="wheel" cx="-13" cy="-5" r="5"/><circle class="wheel" cx="13" cy="-5" r="5"/></g>
     <text class="car-label" x="${labelX}" y="205">${carLabel}</text>
-    <text class="end-label fall" x="40" y="232">OCT 10</text><text class="end-label dec" x="1160" y="232">DEC 8</text>
+    <text class="end-label fall" x="40" y="232">OCT 12</text><text class="end-label dec" x="1160" y="232">DEC 10</text>
   </svg>`;
 }
 
 function exitCard(f, label, extra = '') {
-  return `<button class="exit shipped${extra}" data-feature="${esc(f.id)}"><span class="exit-inner"><span class="exit-meta"><span class="exit-tag">${label}</span><span>${upper(f.shipped_on)}${dayNumber(f.shipped_on) ? ` · DAY ${dayNumber(f.shipped_on)}` : ' · AFTER DEC 8'}</span></span><span class="exit-title">${esc(f.title)}</span><span class="exit-summary">${esc(f.summary)}</span></span></button>`;
+  return `<button class="exit shipped${extra}" data-feature="${esc(f.id)}"><span class="exit-inner"><span class="exit-meta"><span class="exit-tag">${label}</span><span>${upper(f.shipped_on)}${dayNumber(f.shipped_on) ? ` · DAY ${dayNumber(f.shipped_on)}` : f.shipped_on < START ? ' · EARLY' : ' · AFTER DEC 10'}</span></span><span class="exit-title">${esc(f.title)}</span><span class="exit-summary">${esc(f.summary)}</span></span></button>`;
 }
 
 function renderExits(p) {
@@ -102,7 +94,7 @@ function renderExits(p) {
 function render() {
   const today = chicagoToday();
   const p = pace(records.features, today);
-  renderTrip(p); renderUsers(); renderRoute(p, today); renderExits(p);
+  renderTrip(p); renderRoute(p, today); renderExits(p);
   const src = records.challenge.source_url;
   if (/^https:\/\/x\.com\//.test(src || '')) $('#promise-link').href = src;
   $('#data-status').textContent = `Updated ${fmt(records.challenge.verified_at)}${warning ? `. ${warning}` : ''}`;
@@ -119,7 +111,7 @@ function showFeature(id) {
 
 function validRecords(v) {
   return v?.challenge && Array.isArray(v.features) && Array.isArray(v.users)
-    && v.features.every(f => typeof f.id === 'string' && typeof f.title === 'string' && typeof f.summary === 'string' && typeof f.category === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(f.shipped_on) && f.shipped_on >= START && normalizeSourceUrl(f.source_url))
+    && v.features.every(f => typeof f.id === 'string' && typeof f.title === 'string' && typeof f.summary === 'string' && typeof f.category === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(f.shipped_on) && f.shipped_on >= PROMISE_DATE && normalizeSourceUrl(f.source_url))
     && v.users.every(u => /^\d{4}-\d{2}-\d{2}$/.test(u.as_of) && Number.isFinite(u.users) && normalizeSourceUrl(u.source_url));
 }
 

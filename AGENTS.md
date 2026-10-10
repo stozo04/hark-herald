@@ -4,7 +4,7 @@ Read this before changing Hark Road Trip. Owner and only approver: Steven ([@sto
 
 ## What this is
 
-An independent tracker for Brett Adcock's promise ([posted October 10, 2026](https://x.com/adcock_brett/status/2108944733297066312), after Hark launched on Tuesday October 6) of **12 major features over the next ~60 days**. The window is fixed at **October 10 to December 8, 2026** (day 1 to day 60). Sibling of [Ship Happens](https://github.com/stozo04/ship-happens), same stack and conventions.
+An independent tracker for Brett Adcock's promise ([posted October 10, 2026](https://x.com/adcock_brett/status/2108944733297066312), after Hark launched on Tuesday October 6) of **12 major features over the next ~60 days**. The window is **October 12 to December 10, 2026** (day 1 to day 60). Brett posted on Saturday Oct 10, so Steven gave Hark the weekend: day 1 is Monday Oct 12. Features shipped Oct 10–11 still count as early stops. Sibling of [Ship Happens](https://github.com/stozo04/ship-happens), same stack and conventions.
 
 - Live site: https://hark-herald.vercel.app/
 - Public JSON feed: `GET /api/tracker` (documented for outside agents in `llms.txt`)
@@ -49,7 +49,7 @@ Writing style for titles and summaries: plain words, no hype, say what changed f
 | `scripts/build.mjs` | Copies a **fixed list** of files to `dist/`. Add new top-level files there. |
 | `llms.txt` | Feed guide for outside agents. Update it if the feed's shape changes. |
 
-Pace rule (`pace` in `lib/herald.mjs`): 12 in 60 days is one every five days. On day N, on pace means between floor(N/5) and ceil(N/5) delivered; below is behind, above is ahead; 12 is "Promise kept". After December 8 the verdict is final: kept or fell short. Dates are calendar dates in `America/Chicago`.
+Pace rule (`pace` in `lib/herald.mjs`): 12 in 60 days is one every five days. On day N, on pace means between floor(N/5) and ceil(N/5) delivered; below is behind, above is ahead; 12 is "Promise kept". After December 10 the verdict is final: kept or fell short. Dates are calendar dates in `America/Chicago`.
 
 ## Design rules
 
