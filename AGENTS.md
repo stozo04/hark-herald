@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Read this before changing Hark! the Herald. Owner and only approver: Steven ([@stozo04](https://github.com/stozo04)). He checks previews on his phone, so phone layouts matter as much as desktop.
+Read this before changing Hark Road Trip. Owner and only approver: Steven ([@stozo04](https://github.com/stozo04)). He checks previews on his phone, so phone layouts matter as much as desktop.
 
 ## What this is
 
@@ -30,7 +30,7 @@ The live site does **not** read data from this repo. `api/tracker.js` reads thre
 
 1. Get the source: the X post where Brett or the Hark team announces it. If you can't open X, ask Steven for the post text or a screenshot.
 2. Decide if it counts. It counts when they present it as a new feature or launch. Bug fixes, small tweaks, rollouts of something already counted, and promises ("coming soon") don't. When unsure, ask Steven.
-3. Insert one `hark_features` row. Seal order is derived from `shipped_on` then `id`; never store a seal number.
+3. Insert one `hark_features` row. Exit order is derived from `shipped_on` then `id`; never store an exit number.
 4. Bump `hark_settings.content.verified_at` to today.
 5. Verify: `curl -s https://hark-herald.vercel.app/api/tracker` shows `"mode":"supabase"` and the new row.
 
@@ -40,9 +40,9 @@ Writing style for titles and summaries: plain words, no hype, say what changed f
 
 | File | Role |
 | --- | --- |
-| `index.html` | Static markup: hero tally, seals, calendar, proclamations, dialogs. |
+| `index.html` | Static markup: hero, trip card, route map, exits, dialogs. |
 | `app.mjs` | Fetches `/api/tracker` and renders. DOM only. |
-| `lib/herald.mjs` | Pure, tested logic: `dayNumber`, `seals`, `pace`, `userTally`, `normalizeSourceUrl`. Put new logic here. |
+| `lib/herald.mjs` | Pure, tested logic: `dayNumber`, `seals` (exit order), `pace`, `userTally`, route geometry (`routeX`, `routeY`, `roadPath`, `paceSigns`). Put new logic here. |
 | `style.css` | The only stylesheet. Tokens in `:root`. Breakpoints 680px and 900px. |
 | `api/tracker.js` | Serverless Supabase reader. 503 when storage is unavailable. |
 | `scripts/build.mjs` | Copies a **fixed list** of files to `dist/`. Add new top-level files there. |
@@ -53,8 +53,8 @@ Pace rule (`pace` in `lib/herald.mjs`): 12 in 60 days is one every five days. On
 ## Design rules
 
 - **Plain over clever.** Every number says exactly what it counts.
-- **One accent.** Wax red means a shipped feature. Gold means a pace checkpoint or a bonus. Everything else is ink on parchment.
-- **Fun in small doses.** Seals stamp in once per new feature (remembered per device), the bell rings now and then. No more motion than that, and respect reduced motion.
+- **Road trip theme.** Highway green means a stop reached (shipped feature or reached pace sign). Seasons on the route map follow the calendar: fall (Oct), Thanksgiving (Nov), winter (Dec). Gold is only for bonus exits. Plain, friendly copy, no old-timey talk.
+- **Fun in small doses.** The car drives to today on load, the December lights twinkle. No more motion than that, and respect reduced motion.
 - **Mobile first.** Check 390px, ~900px and 1440px with no horizontal scrolling.
 
 ## Workflow

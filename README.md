@@ -1,4 +1,4 @@
-# Hark! the Herald
+# Hark Road Trip
 
 An independent tracker for Brett Adcock's promise of [12 major Hark features over the next ~60 days](https://x.com/adcock_brett), October 10 to December 8, 2026.
 
@@ -6,9 +6,9 @@ An independent tracker for Brett Adcock's promise of [12 major Hark features ove
 
 ## What it tracks
 
-- **The twelve seals.** Each major feature stamps the next wax seal, in the order it ships. Extras are bonus; anything after December 8 is late.
+- **Twelve exits.** Each major feature becomes the next highway exit, in the order it ships. Extras are bonus; anything after December 8 is late.
 - **Pace.** Twelve in sixty days is one every five days. The hero says whether Hark is ahead, on pace or behind, and when the next one is due.
-- **Sixty days.** A calendar of the whole window, with a bell on every fifth day.
+- **The route.** A road from Oct 10 to Dec 8 through fall, Thanksgiving and winter, with a pace sign every fifth day and a car at today.
 - **Receipts.** Every feature and every user count links its original X post.
 
 ## Development

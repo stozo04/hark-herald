@@ -1,4 +1,4 @@
-# Hark! the Herald for agents
+# Hark Road Trip for agents
 
 Public, read-only tracker for Brett Adcock's promise of 12 major Hark features in about 60 days (October 10 to December 8, 2026).
 
@@ -7,7 +7,7 @@ No login, API key, or cookies are required. No writes are supported.
 
 Response fields:
 - challenge: promise text, promised (12), start_date, end_date, total_days (60), launch_date, source_url and verified_at.
-- features: one record per major feature with id, shipped_on (calendar date, America/Chicago), title, summary, category, source_url and optional product_url. Sort by shipped_on then id: the first 12 inside the window fill the 12 seals; extras inside the window are bonus; anything after December 8 is late.
+- features: one record per major feature with id, shipped_on (calendar date, America/Chicago), title, summary, category, source_url and optional product_url. Sort by shipped_on then id: the first 12 inside the window are exits 1 to 12; extras inside the window are bonus; anything after December 8 is late.
 - users: public user counts with as_of, users and source_url.
 - mode: supabase means stored production records. If storage is down the API returns HTTP 503 with no records; say you could not get the data instead of guessing.
 

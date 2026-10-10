@@ -54,3 +54,14 @@ test('user tally and compact numbers', () => {
   assert.deepEqual([t.users, t.growth, t.since, t.source_url], [700000, 138000, '2026-10-10', 'u2']);
   assert.equal(compact(562000), '562K'); assert.equal(compact(1250000), '1.25M'); assert.equal(compact(900), '900');
 });
+
+import { routeX, routeY, roadPath, paceSigns } from '../lib/herald.mjs';
+test('route geometry spans the map and pace signs fall every five days', () => {
+  assert.equal(routeX(1), 40); assert.equal(routeX(60), 1160);
+  assert.ok(routeY(600) > 100 && routeY(600) < 180);
+  assert.match(roadPath(), /^M20,\d+ L40,\d+/);
+  const signs = paceSigns(3);
+  assert.equal(signs.length, 12);
+  assert.deepEqual(signs.slice(0, 4).map(s => [s.day, s.reached]), [[5, true], [10, true], [15, true], [20, false]]);
+  assert.equal(signs[11].date, '2026-12-08');
+});

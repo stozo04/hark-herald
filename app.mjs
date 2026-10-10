@@ -1,125 +1,120 @@
-import { START, TOTAL_DAYS, PROMISED, dayNumber, allDays, normalizeSourceUrl, ordered, seals, pace, userTally, compact } from './lib/herald.mjs';
+import { START, TOTAL_DAYS, PROMISED, dayNumber, dateForDay, normalizeSourceUrl, seals, pace, userTally, compact, routeX, routeY, roadPath, paceSigns } from './lib/herald.mjs';
 
 const $ = s => document.querySelector(s);
-let records, query = '', warning = '', toastTimer;
+let records, warning = '', toastTimer;
 const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fmt = (date, opts = { month: 'short', day: 'numeric' }) => new Intl.DateTimeFormat('en-US', { ...opts, timeZone: 'UTC' }).format(new Date(`${date}T12:00:00Z`));
+const upper = date => fmt(date).toUpperCase();
 const chicagoToday = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
-const SEEN_KEY = 'hark-herald-seen';
 
-function link(url, text, cls = 'source-link') {
-  const safe = normalizeSourceUrl(url);
-  return safe ? `<a class="${cls}" href="${esc(safe)}" target="_blank" rel="noopener noreferrer">${text}</a>` : '';
-}
 function toast(text) { $('#toast').textContent = text; $('#toast').classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => $('#toast').classList.remove('show'), 2800); }
-function seen() { try { return new Set(JSON.parse(localStorage.getItem(SEEN_KEY) || '[]')); } catch { return new Set(); } }
-function remember(ids) { try { localStorage.setItem(SEEN_KEY, JSON.stringify(ids)); } catch { /* storage blocked: stamps just replay */ } }
+function sourceLink(url, text) {
+  const safe = normalizeSourceUrl(url);
+  return safe ? `<a class="sign-link" href="${esc(safe)}" target="_blank" rel="noopener noreferrer">${text}</a>` : '';
+}
 
 const VERDICT = {
-  upcoming: ['Not started', 'The clock starts Oct 10.'],
-  'on-pace': ['On pace', 'Right on schedule. One every five days keeps the promise.'],
-  ahead: ['Ahead', 'Shipping faster than promised.'],
-  behind: ['Behind', 'Falling behind the one-every-five-days pace.'],
-  kept: ['Promise kept', 'All twelve seals stamped. 🔔'],
-  short: ['Fell short', 'The sixty days are up.'],
+  upcoming: ['Not started', 'The trip starts Oct 10.'],
+  'on-pace': ['On pace', 'Right on schedule: one stop every five days keeps the promise.'],
+  ahead: ['Ahead', 'Driving faster than promised.'],
+  behind: ['Behind', 'Falling behind one stop every five days.'],
+  kept: ['Promise kept', 'All 12 stops reached. 🎄'],
+  short: ['Fell short', 'The 60 days are up.'],
 };
 
-function renderTally(p) {
+function renderTrip(p) {
   $('#delivered').textContent = p.delivered;
   const [pill, line] = VERDICT[p.status];
   $('#status-pill').textContent = pill;
   $('#status-pill').className = `pill ${p.status}`;
-  let verdict = line;
-  if (p.status === 'short') verdict = `${p.delivered} of 12 shipped by Dec 8.`;
-  if (p.bonus) verdict += ` Plus ${plural(p.bonus, 'bonus feature')}.`;
-  $('#verdict').textContent = verdict;
-  $('#eyebrow').textContent = p.phase === 'live' ? `Day ${p.day} of 60 · Oct 10 — Dec 8` : p.phase === 'complete' ? 'Final · Oct 10 — Dec 8' : 'Starts Oct 10';
-  $('#day-label').textContent = p.phase === 'live' ? `${plural(p.daysLeft, 'day')} left` : p.phase === 'complete' ? 'Sixty days are up' : '60 days to go';
-  $('#next-due').textContent = p.nextDue ? `Feature #${p.delivered + 1} due by ${fmt(p.nextDue)} to stay on pace` : '';
-  const fill = Math.min(100, p.counted / PROMISED * 100), mark = Math.min(100, p.expected / PROMISED * 100);
-  $('#track-pace').hidden = p.phase !== 'live';
-  requestAnimationFrame(() => requestAnimationFrame(() => {
-    $('#track-fill').style.width = `${fill}%`;
-    $('#track-pace').style.left = `${mark}%`;
-  }));
+  $('#verdict').textContent = (p.status === 'short' ? `${p.delivered} of 12 stops reached by Dec 8.` : line) + (p.bonus ? ` Plus ${plural(p.bonus, 'bonus stop')}.` : '');
+  $('#eyebrow').textContent = p.phase === 'live' ? `Day ${p.day} of 60 · Oct 10 → Dec 8` : p.phase === 'complete' ? 'Trip complete · Oct 10 → Dec 8' : 'Starts Oct 10 · Oct 10 → Dec 8';
+  $('#days-left').textContent = p.phase === 'live' ? `${plural(p.daysLeft, 'day')} left` : p.phase === 'complete' ? 'The 60 days are up' : '60 days to go';
+  $('#next-due').textContent = p.nextDue ? `Stop ${p.delivered + 1} due by ${fmt(p.nextDue)}` : '';
+  $('#segments').innerHTML = Array.from({ length: PROMISED }, (_, i) => `<i class="${i < p.counted ? 'on' : ''}" style="--i:${i}"></i>`).join('');
 }
 
 function renderUsers() {
-  const t = userTally(records.users);
-  const chip = $('#users-chip');
+  const t = userTally(records.users), chip = $('#users-chip');
   if (!t) { chip.hidden = true; return; }
   chip.hidden = false;
   chip.href = normalizeSourceUrl(t.source_url) || '#';
-  chip.innerHTML = `<strong>${compact(t.users)}+</strong> users as of ${fmt(t.as_of)}${t.points > 1 && t.growth > 0 ? ` <span class="up">▲ ${compact(t.growth)} since ${fmt(t.since)}</span>` : ''} <span class="arrow">↗</span>`;
+  chip.innerHTML = `<strong>${compact(t.users)}+</strong> users${t.points > 1 && t.growth > 0 ? ` <span class="up">▲ ${compact(t.growth)} since ${fmt(t.since)}</span>` : ` <span class="muted">as of ${fmt(t.as_of)}</span>`}`;
 }
 
-const SEAL_SVG = n => `<svg viewBox="0 0 100 100" aria-hidden="true"><path class="wax" d="M50 4c6 0 9 5 14 6s11-2 15 2 2 10 5 14 8 7 8 14-5 9-6 14 2 11-2 15-10 2-14 5-7 8-14 8-9-5-14-6-11 2-15-2-2-10-5-14-8-7-8-14 5-9 6-14-2-11 2-15 10-2 14-5 7-8 14-8Z"/><circle class="ring" cx="50" cy="50" r="30"/><text x="50" y="51" text-anchor="middle" dominant-baseline="middle">${n}</text></svg>`;
-
-function renderSeals() {
-  const { slots, bonus, late } = seals(records.features);
-  const before = seen();
-  $('#seals').innerHTML = slots.map((s, i) => {
-    if (!s.feature) return `<button class="seal open" data-seal="${s.number}" aria-label="Seal ${s.number}: not yet shipped"><span class="seal-art"><span class="seal-q">${s.number}</span></span><span class="seal-title">Awaiting</span></button>`;
-    const fresh = !before.has(s.feature.id);
-    return `<button class="seal stamped${fresh ? ' fresh' : ''}" style="--i:${i}" data-feature="${esc(s.feature.id)}" aria-label="Seal ${s.number}: ${esc(s.feature.title)}, shipped ${fmt(s.feature.shipped_on)}"><span class="seal-art">${SEAL_SVG(s.number)}</span><span class="seal-title">${esc(s.feature.title)}</span><span class="seal-date">${fmt(s.feature.shipped_on)}</span></button>`;
+/** The road map. Seasons follow the calendar: October fall, November Thanksgiving, December winter. */
+function renderRoute(p, today) {
+  const mid = (a, b) => Math.round((routeX(a) + routeX(b)) / 2);
+  const novX = mid(dayNumber('2026-10-31'), dayNumber('2026-11-01'));
+  const decX = mid(dayNumber('2026-11-30'), dayNumber('2026-12-01'));
+  const tgX = Math.round(routeX(dayNumber('2026-11-26')));
+  const road = roadPath();
+  const signs = paceSigns(p.counted).map(s => {
+    const top = s.y - 62, w = s.n > 9 ? 34 : 30;
+    return `<g class="pace-sign${s.reached ? ' reached' : ''}"><title>Stop ${s.n} due by ${fmt(s.date)}</title><line x1="${s.x}" y1="${top + 26}" x2="${s.x}" y2="${s.y - 17}"/><rect x="${s.x - w / 2}" y="${top}" width="${w}" height="26" rx="4"/><text x="${s.x}" y="${top + 18}">${s.n}</text></g>`;
   }).join('');
-  const extra = [...bonus.map(f => ['Bonus', f]), ...late.map(f => ['Late', f])];
-  $('#bonus').hidden = !extra.length;
-  $('#bonus').innerHTML = extra.length ? `<h3>Beyond the twelve</h3><div class="bonus-list">${extra.map(([tag, f]) => `<button class="bonus-item" data-feature="${esc(f.id)}"><span class="tag ${tag.toLowerCase()}">${tag}</span>${esc(f.title)}</button>`).join('')}</div>` : '';
-  remember(records.features.map(f => f.id));
-}
-
-function renderCalendar(today) {
-  const current = dayNumber(today);
-  $('#calendar').innerHTML = allDays().map(({ day, date }) => {
-    const count = records.features.filter(f => f.shipped_on === date).length;
-    const future = date > today, isToday = day === current, checkpoint = day % 5 === 0;
-    const label = `Day ${day}, ${fmt(date)}: ${count ? plural(count, 'feature') : future ? 'coming up' : isToday ? 'today, nothing yet' : 'no feature'}${checkpoint ? `, pace checkpoint for feature ${day / 5}` : ''}`;
-    return `<button class="cal-day${count ? ' shipped' : ''}${future ? ' future' : ''}${isToday ? ' today' : ''}${checkpoint ? ' checkpoint' : ''}" data-day="${day}" aria-label="${esc(label)}"><span class="cal-num">${day}</span>${count ? `<span class="cal-mark">${count > 1 ? `×${count}` : ''}</span>` : ''}${checkpoint ? '<span class="cal-bell" aria-hidden="true">🔔</span>' : ''}</button>`;
+  const dots = records.features.filter(f => dayNumber(f.shipped_on) && f.shipped_on <= today).map(f => {
+    const x = routeX(dayNumber(f.shipped_on));
+    return `<circle class="ship-dot" cx="${Math.round(x)}" cy="${Math.round(routeY(x))}" r="7"><title>${esc(f.title)} · ${fmt(f.shipped_on)}</title></circle>`;
   }).join('');
+  const carDay = p.phase === 'upcoming' ? 1 : p.day;
+  const cx = Math.round(routeX(carDay)), cy = Math.round(routeY(cx));
+  const carLabel = p.phase === 'complete' ? 'TRIP COMPLETE' : p.phase === 'upcoming' ? 'STARTS OCT 10' : `TODAY · DAY ${p.day}`;
+  const labelX = Math.min(1120, Math.max(80, cx));
+  $('#route').innerHTML = `<svg viewBox="0 0 1200 240" role="img" aria-label="Route map from Oct 10 to Dec 8 through fall, Thanksgiving and winter. ${p.counted} of 12 stops reached.${p.phase === 'live' ? ` Today is day ${p.day}.` : ''}">
+    <rect class="z-fall" x="0" y="0" width="${novX}" height="240"/>
+    <rect class="z-nov" x="${novX}" y="0" width="${decX - novX}" height="240"/>
+    <rect class="z-dec" x="${decX}" y="0" width="${1200 - decX}" height="240"/>
+    <text class="zone fall" x="24" y="32">FALL · OCT</text>
+    <text class="zone nov" x="${novX + 20}" y="32">THANKSGIVING · NOV</text>
+    <text class="zone dec" x="${decX + 16}" y="32">WINTER · DEC</text>
+    <g class="leaves"><ellipse cx="70" cy="214" rx="9" ry="5" transform="rotate(-25 70 214)"/><ellipse class="l2" cx="160" cy="205" rx="8" ry="4" transform="rotate(20 160 205)"/><ellipse class="l3" cx="300" cy="218" rx="9" ry="5" transform="rotate(-10 300 218)"/><ellipse cx="420" cy="62" rx="8" ry="4" transform="rotate(30 420 62)"/><ellipse class="l3" cx="60" cy="70" rx="7" ry="4" transform="rotate(-30 60 70)"/><ellipse class="l2" cx="560" cy="212" rx="8" ry="4" transform="rotate(15 560 212)"/></g>
+    <g class="snow"><circle cx="${decX + 30}" cy="205" r="3"/><circle cx="${decX + 70}" cy="222" r="2.5"/><circle cx="${decX + 110}" cy="200" r="3"/><circle cx="${decX + 150}" cy="216" r="2"/><circle cx="${decX + 60}" cy="90" r="2"/><circle cx="${decX + 140}" cy="100" r="2.5"/></g>
+    <g class="lights"><polyline points="${decX + 16},50 ${decX + 50},60 ${decX + 84},50 ${decX + 118},60 ${decX + 152},50"/><circle class="b1" cx="${decX + 16}" cy="50" r="4.5"/><circle class="b2" cx="${decX + 50}" cy="60" r="4.5"/><circle class="b3" cx="${decX + 84}" cy="50" r="4.5"/><circle class="b1" cx="${decX + 118}" cy="60" r="4.5"/><circle class="b2" cx="${decX + 152}" cy="50" r="4.5"/></g>
+    <g class="tg-sign"><line x1="${tgX}" y1="182" x2="${tgX}" y2="198"/><rect x="${tgX - 80}" y="198" width="160" height="26" rx="4"/><text x="${tgX}" y="216">THANKSGIVING 11/26</text></g>
+    <path class="road" d="${road}"/><path class="road-line" d="${road}"/>
+    ${signs}${dots}
+    <g class="car" style="--x:${cx}px;--y:${cy}px"><rect class="cabin" x="-13" y="-29" width="24" height="11" rx="4"/><rect class="window" x="-9" y="-27" width="16" height="6" rx="2"/><rect class="body" x="-22" y="-20" width="44" height="14" rx="5"/><circle class="wheel" cx="-13" cy="-5" r="5"/><circle class="wheel" cx="13" cy="-5" r="5"/></g>
+    <text class="car-label" x="${labelX}" y="205">${carLabel}</text>
+    <text class="end-label fall" x="40" y="232">OCT 10</text><text class="end-label dec" x="1160" y="232">DEC 8</text>
+  </svg>`;
 }
 
-function sealNumber(id) {
-  const i = seals(records.features).slots.findIndex(s => s.feature?.id === id);
-  return i >= 0 ? i + 1 : null;
+function exitCard(f, label, extra = '') {
+  return `<button class="exit shipped${extra}" data-feature="${esc(f.id)}"><span class="exit-inner"><span class="exit-meta"><span class="exit-tag">${label}</span><span>${upper(f.shipped_on)}${dayNumber(f.shipped_on) ? ` · DAY ${dayNumber(f.shipped_on)}` : ' · AFTER DEC 8'}</span></span><span class="exit-title">${esc(f.title)}</span><span class="exit-summary">${esc(f.summary)}</span></span></button>`;
 }
 
-function featureCard(f) {
-  const n = sealNumber(f.id);
-  return `<article class="card"><div class="card-seal ${n ? '' : 'extra'}">${n ?? '+'}</div><div class="card-body"><div class="card-meta"><span>${fmt(f.shipped_on, { month: 'short', day: 'numeric', year: 'numeric' })}</span>${dayNumber(f.shipped_on) ? `<span>Day ${dayNumber(f.shipped_on)}</span>` : '<span>After Dec 8</span>'}<span class="cat">${esc(f.category)}</span></div><h3>${esc(f.title)}</h3><p>${esc(f.summary)}</p><div class="card-links">${link(f.source_url, '𝕏 Source ↗')}${f.product_url && /^https:\/\//.test(f.product_url) ? `<a class="source-link" href="${esc(f.product_url)}" target="_blank" rel="noopener noreferrer">Try it ↗</a>` : ''}</div></div></article>`;
-}
-
-function renderLog() {
-  const term = query.trim().toLowerCase();
-  const list = ordered(records.features).reverse().filter(f => `${f.title} ${f.summary} ${f.category}`.toLowerCase().includes(term));
-  $('#log').innerHTML = list.length ? list.map(featureCard).join('') : `<div class="empty"><h3>${term ? 'No matches' : 'No proclamations yet.'}</h3><p>${term ? 'Try another word or clear the search.' : 'The first seal is stamped when Hark ships its first major feature with a public post to back it.'}</p></div>`;
+function renderExits(p) {
+  const { slots, bonus, late } = seals(records.features.filter(f => f.shipped_on <= chicagoToday()));
+  let nextShown = false, later = 0;
+  const cards = slots.map(s => {
+    if (s.feature) return exitCard(s.feature, `EXIT ${s.number}`);
+    const due = dateForDay(s.number * (TOTAL_DAYS / PROMISED));
+    if (!nextShown && p.phase !== 'complete') { nextShown = true; return `<div class="exit next"><span class="exit-meta"><span class="exit-tag">EXIT ${s.number}</span><span>NEXT STOP</span></span><span class="exit-title">Due by ${fmt(due)} to stay on pace</span></div>`; }
+    later++;
+    return `<div class="exit later"><span class="exit-meta"><span>EXIT ${s.number}${s.number === PROMISED ? ' · FINAL' : ''}</span></span><span class="exit-due">${p.phase === 'complete' ? 'Not reached' : `Due by ${fmt(due)}`}</span></div>`;
+  });
+  const extras = [...bonus.map(f => exitCard(f, 'BONUS EXIT', ' bonus')), ...late.map(f => exitCard(f, 'LATE EXIT', ' late'))];
+  $('#exits').innerHTML = cards.join('') + extras.join('') + (later ? `<p class="more">${plural(later, 'more exit')} down the road</p>` : '');
 }
 
 function render() {
   const today = chicagoToday();
-  renderTally(pace(records.features, today));
-  renderUsers();
-  renderSeals();
-  renderCalendar(today);
-  renderLog();
+  const p = pace(records.features, today);
+  renderTrip(p); renderUsers(); renderRoute(p, today); renderExits(p);
   const src = records.challenge.source_url;
   if (/^https:\/\/x\.com\//.test(src || '')) $('#promise-link').href = src;
-  $('#data-status').textContent = `Updated ${records.challenge.verified_at}${warning ? `. ${warning}` : ''}`;
+  $('#data-status').textContent = `Updated ${fmt(records.challenge.verified_at)}${warning ? `. ${warning}` : ''}`;
 }
 
-function openDetail(html) { $('#detail').innerHTML = html; $('#detail-dialog').showModal(); }
-function showFeature(id) { const f = records.features.find(x => x.id === id); if (f) openDetail(featureCard(f)); }
-function showSeal(n) {
-  const p = pace(records.features, chicagoToday());
-  openDetail(`<div class="dialog-head"><span class="eyebrow">Seal ${n}</span><h2>Not stamped yet</h2></div><p class="dialog-note">${p.phase === 'complete' ? 'The sixty days ended before this one shipped.' : `To stay on pace, feature #${n} should ship by ${fmt(allDays()[Math.min(TOTAL_DAYS, n * 5) - 1].date)}.`}</p>`);
-}
-function showDay(day) {
-  const d = allDays()[day - 1];
-  const list = records.features.filter(f => f.shipped_on === d.date);
-  const today = chicagoToday();
-  const note = list.length ? list.map(featureCard).join('') : `<p class="dialog-note">${d.date > today ? 'Still to come.' : 'No major feature recorded this day.'}${day % 5 === 0 ? ` On pace means ${day / 5} feature${day === 5 ? '' : 's'} by today.` : ''}</p>`;
-  openDetail(`<div class="dialog-head"><span class="eyebrow">${fmt(d.date, { weekday: 'long', month: 'long', day: 'numeric' })}</span><h2>Day ${day}<span class="red">.</span></h2></div>${note}`);
+function showFeature(id) {
+  const f = records.features.find(x => x.id === id);
+  if (!f) return;
+  const n = seals(records.features).slots.findIndex(s => s.feature?.id === id) + 1;
+  const product = f.product_url && /^https:\/\//.test(f.product_url) ? `<a class="sign-link" href="${esc(f.product_url)}" target="_blank" rel="noopener noreferrer">Try it ↗</a>` : '';
+  $('#detail').innerHTML = `<div class="exit shipped big-sign"><span class="exit-inner"><span class="exit-meta"><span class="exit-tag">${n ? `EXIT ${n}` : 'BONUS EXIT'}</span><span>${upper(f.shipped_on)}${dayNumber(f.shipped_on) ? ` · DAY ${dayNumber(f.shipped_on)}` : ''}</span></span><span class="exit-title">${esc(f.title)}</span><span class="exit-summary">${esc(f.summary)}</span><span class="exit-links">${sourceLink(f.source_url, 'Source on X ↗')}${product}</span></span></div><p class="dialog-cat">${esc(f.category)}</p>`;
+  $('#detail-dialog').showModal();
 }
 
 function validRecords(v) {
@@ -139,7 +134,7 @@ async function load() {
   } catch {
     if (records) { warning = 'Refresh failed; showing the last loaded records.'; toast('Couldn’t refresh. Your last loaded records are still here.'); }
     else {
-      $('#log').innerHTML = '<div class="empty"><h3>The herald has lost his voice.</h3><p>Live data is unavailable right now. Try Refresh in a moment.</p></div>';
+      $('#exits').innerHTML = '<div class="empty"><h3>We hit a detour.</h3><p>Live data is unavailable right now. Try Refresh in a moment.</p></div>';
       $('#status-pill').textContent = 'Unavailable'; $('#data-status').textContent = 'Live data unavailable';
       return;
     }
@@ -148,18 +143,14 @@ async function load() {
 }
 
 document.addEventListener('click', e => {
-  const t = e.target;
-  const feature = t.closest('[data-feature]'); if (feature) showFeature(feature.dataset.feature);
-  const seal = t.closest('[data-seal]'); if (seal) showSeal(Number(seal.dataset.seal));
-  const day = t.closest('[data-day]'); if (day) showDay(Number(day.dataset.day));
-  if (t.closest('.dialog-close')) t.closest('dialog').close();
+  const feature = e.target.closest('[data-feature]'); if (feature) showFeature(feature.dataset.feature);
+  if (e.target.closest('.dialog-close')) e.target.closest('dialog').close();
 });
 document.querySelectorAll('dialog').forEach(d => d.addEventListener('click', e => {
   if (e.target !== d) return;
   const b = d.getBoundingClientRect();
   if (e.clientX < b.left || e.clientX > b.right || e.clientY < b.top || e.clientY > b.bottom) d.close();
 }));
-$('#search').addEventListener('input', e => { query = e.target.value; if (records) renderLog(); });
 $('#refresh').addEventListener('click', load);
 $('#agent-open').addEventListener('click', () => { $('#copy-status').textContent = ''; $('#agent-dialog').showModal(); });
 $('#copy-agent-prompt').addEventListener('click', async () => {
